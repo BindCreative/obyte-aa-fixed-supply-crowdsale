@@ -1,0 +1,128 @@
+{
+	/*
+    Fixed Supply Crowdsale 
+
+    * The first transaction sent to AA will define a new asset and will become a founder of the crowd sale.
+    * Investors can send bytes to AA and the response will give them details for claiming it.
+    * Each round is 1 hour long by default (for testing purposes) and a total of 1 million tokens can be claimed with each round. It is configurable by deploying new AA.
+    * Amount of tokens each investor can claim during each round depends on how much other investors invested during that same round. If nobody invested during some round, then no tokens will be issued from that round. Other users can pay the claiming fees of other investors as tokens will be sent to only investor address.
+    * Crowdsale length is 720 hours (30 days) by default (for testing purposes), which means that the maximum amount of tokens ever issued will be 720 million. It is configurable by deploying new AA.
+    * Founder can withdraw users' invested bytes only when the crowdsale is over in order to avoid them taking part of the crowdsale with funds from users.
+	* Founder gets only the bytes and assets deposited to AA, not any of the newly defined asset without investing their own bytes.
+
+	*/
+	init: "{
+		// 1 - change the number if already posted to DAG
+		$asset = var['asset'];
+		$founder = var['founder'];
+		$minutes_from_epoch = timestamp / 60;
+		$hours_from_epoch = $minutes_from_epoch / 60;
+		$days_from_epoch = $hours_from_epoch / 24;
+		$weeks_from_epoch = $days_from_epoch / 7;
+		$periods_from_epoch = floor($hours_from_epoch); // choose weeks, days, hours or minutes here
+		$current_period = $periods_from_epoch - var['start'] + 1;
+		$max_claim_per_period = 1e6;
+		$max_crowdsale_periods = 720;
+	}",
+	messages: {
+		cases: [
+			{
+				if: "{!$asset}",
+				messages: [
+					{
+						app: "asset",
+						payload: {
+							is_private: false,
+							is_transferrable: true,
+							auto_destroy: false,
+							fixed_denominations: false,
+							issued_by_definer_only: true,
+							cosigned_by_definer: false,
+							spender_attested: false
+						}
+					},
+					{
+						app: "state",
+						state: "{
+							// start the new crowdsale with new asset
+							var['asset'] = response_unit;
+							var['founder'] = trigger.address;
+							var['start'] = $periods_from_epoch;
+							response['message'] = 'Crowdsale started';
+						}"
+					}
+				]
+			},
+			{
+				if: "{trigger.data.claim_period}",
+				init: "{
+					// investor claiming
+					if (trigger.data.claim_period >= $current_period) bounce('Claiming is only possible for previous periods.');
+					$claim_address = trigger.data.claim_address ? trigger.data.claim_address : trigger.address;
+					$investor_claim_period = var['investor_' || $claim_address || '_' || trigger.data.claim_period];
+					if (!$investor_claim_period) bounce('Investor didn\'t invest on that period or already claimed that period.');
+					$total_raised_on_period = var['total_raised_' || trigger.data.claim_period] + $amount;
+					$invesor_share = $investor_claim_period / $total_raised_on_period;
+					$claim_amount = round($invesor_share * $max_claim_per_period);
+ 				}",
+				messages: [
+					{
+						app: "payment",
+						payload: {
+							asset: "{$asset}",
+							outputs: [
+								{
+									address: "{$claim_address}",
+									amount: "{$claim_amount}"
+								}
+                            ]
+						}
+					},
+					{
+						app: "state",
+						state: "{
+							var['investor_' || $claim_address || '_' || trigger.data.claim_period] = false;
+							response['message'] = 'Investor claimed';
+						}"
+					}
+				]
+			},
+			{
+				if: "{trigger.address == $founder AND $current_period > $max_crowdsale_periods}",
+				messages: [
+					{
+						app: "payment",
+						payload: {
+							asset: "{trigger.data.withdraw_asset ? trigger.data.withdraw_asset : 'base'}",
+							outputs: [
+								{
+									address: "{$founder}"
+								}
+							]
+						}
+					}
+				]
+			},
+			{
+				init: "{
+					// investing in current period
+					if ($current_period > $max_crowdsale_periods) bounce('Crowdsale is over.');
+					$investor_on_period = var['investor_' || trigger.address || '_' || $current_period];
+					$amount = trigger.output[[asset=base]];
+					$total_raised_on_period = var['total_raised_' || $current_period] + $amount;
+					$total_investor_on_period = $investor_on_period + $amount;
+				}",
+				messages: [
+					{
+						app: "state",
+						state: "{
+							var['total_raised_' || $current_period] = $total_raised_on_period;
+							var['investor_' || trigger.address || '_' || $current_period] = $total_investor_on_period;
+							response['message'] = 'Use claim_period(' || $current_period || ') and claim_address(' || trigger.address || ') in data.';
+						}"
+					}
+				]
+			}
+		]
+	}
+}
