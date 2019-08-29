@@ -1,0 +1,6 @@
+{
+	// https://vscode-westeu.azurewebsites.net/docs/languages/identifiers
+	"files.associations": {
+		"*.ojson": "groovy"
+	}
+}

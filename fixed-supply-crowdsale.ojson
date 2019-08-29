@@ -2,13 +2,13 @@
 	/*
 	Fixed Supply Crowdsale 
 
-	* The first transaction sent to AA will define a new asset and will become a founder of the crowd sale.
+	* The first transaction sent to AA will define a new asset and will become a founder of the crowdsale.
 	* Investors can send bytes to AA and the response will give them details for claiming it.
-	* Each round is 1 hour long by default (for testing purposes) and a total of 1 million tokens can be claimed with each round. It is configurable by deploying new AA.
-	* Amount of tokens each investor can claim during each round depends on how much other investors invested during that same round. If nobody invested during some round, then no tokens will be issued from that round. Other users can pay the claiming fees of other investors as tokens will be sent to only investor address.
+	* Each period is 1 hour long by default (for testing purposes) and a total of 1 million tokens can be claimed with each period. It is configurable by deploying new AA.
+	* Amount of tokens each investor can claim during each period depends on how much other investors invested during that same period. If nobody invested during some period, then no tokens will be issued from that period. Other users can pay the claiming fees of other investors as tokens will be sent to only investor address.
 	* Crowdsale length is 720 hours (30 days) by default (for testing purposes), which means that the maximum amount of tokens ever issued will be 720 million. It is configurable by deploying new AA.
-	* Founder can withdraw users' invested bytes only when the crowdsale is over in order to avoid them taking part of the crowdsale with funds from users.
-	* Founder gets only the bytes and assets deposited to AA, not any of the newly defined asset without investing their own bytes.
+	* Founder can withdraw users' invested bytes only when the crowdsale is over, this is for avoiding them taking part of the crowdsale with the funds from users.
+	* Founder gets only the bytes and assets deposited to AA, not any of the newly defined tokens without investing own bytes.
 
 	*/
 	init: "{
@@ -59,12 +59,12 @@
 					// investor claiming
 					if (trigger.data.claim_period >= $current_period) bounce('Claiming is only possible for previous periods.');
 					$claim_address = trigger.data.claim_address ? trigger.data.claim_address : trigger.address;
-					$investor_claim_period = var['investor_' || $claim_address || '_' || trigger.data.claim_period];
-					if (!$investor_claim_period) bounce('Investor didn\'t invest on that period or already claimed that period.');
+					$investor_on_period = var['investor_' || $claim_address || '_' || trigger.data.claim_period];
+					if (!$investor_on_period) bounce('Investor didn\'t invest on that period or already claimed that period.');
 					$total_raised_on_period = var['total_raised_' || trigger.data.claim_period] + $amount;
-					$invesor_share = $investor_claim_period / $total_raised_on_period;
+					$invesor_share = $investor_on_period / $total_raised_on_period;
 					$claim_amount = round($invesor_share * $max_claim_per_period);
- 				}",
+				}",
 				messages: [
 					{
 						app: "payment",
@@ -75,7 +75,7 @@
 									address: "{$claim_address}",
 									amount: "{$claim_amount}"
 								}
-                            ]
+							]
 						}
 					},
 					{
