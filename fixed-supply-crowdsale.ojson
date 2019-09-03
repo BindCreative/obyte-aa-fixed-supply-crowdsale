@@ -118,7 +118,7 @@
 						state: "{
 							var['total_raised_' || $current_period] = $total_raised_on_period;
 							var['investor_' || trigger.address || '_' || $current_period] = $total_investor_on_period;
-							response['claim_period'] = $current_period;							
+							response['claim_period'] = $current_period;
 							response['claim_address'] = trigger.address;
 							response['message'] = 'Use claim_period and claim_address as data when claiming crowdsale tokens.';
 						}"
