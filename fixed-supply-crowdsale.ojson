@@ -61,7 +61,7 @@
 					$claim_address = trigger.data.claim_address ? trigger.data.claim_address : trigger.address;
 					$investor_on_period = var['investor_' || $claim_address || '_' || trigger.data.claim_period];
 					if (!$investor_on_period) bounce('Investor didn\'t invest on that period or already claimed that period.');
-					$total_raised_on_period = var['total_raised_' || trigger.data.claim_period] + $amount;
+					$total_raised_on_period = var['total_raised_' || trigger.data.claim_period];
 					$invesor_share = $investor_on_period / $total_raised_on_period;
 					$claim_amount = round($invesor_share * $max_claim_per_period);
 				}",
